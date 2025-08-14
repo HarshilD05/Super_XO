@@ -8,6 +8,8 @@ interface GameState {
   currentBoard: number | null;
   moves: [number, number][];
   currentMove: number;
+  winners: (string | null)[];
+  superWinner: string | null;
 }
 
 const SuperXOGame: React.FC = () => {
@@ -16,6 +18,8 @@ const SuperXOGame: React.FC = () => {
     currentBoard: null,
     moves: [],
     currentMove: 0,
+    winners: Array(9).fill(null),
+    superWinner: null,
   };
 
   const [gameState, setGameState] = useState<GameState>(initialState);
@@ -40,16 +44,13 @@ const SuperXOGame: React.FC = () => {
     return null;
   };
 
-  const winners = gameState.boards.map(calculateWinner);
   
-  const superWinner = calculateWinner(winners);
-
   const handleCellClick = (boardIndex: number, cellIndex: number) => {
     if (
-      superWinner ||
+      gameState.superWinner ||
       (gameState.currentBoard !== null && gameState.currentBoard !== boardIndex) ||
       gameState.boards[boardIndex][cellIndex] !== null ||
-      winners[boardIndex]
+      gameState.winners[boardIndex]
     ) {
       return;
     }
@@ -60,8 +61,30 @@ const SuperXOGame: React.FC = () => {
 
     const newMoves: [number, number][] = [...gameState.moves.slice(0, gameState.currentMove), [boardIndex, cellIndex]];
 
+    // Check if the current board has a winner after the move
+    const currBoardWinner = calculateWinner(newBoards[boardIndex]);
+    
+    // If a Board has a Winner, Update the winners state
+    const newWinners = [...gameState.winners];
+    if (currBoardWinner) {
+      newWinners[boardIndex] = currBoardWinner;
+      // If the current board has a winner, check if it leads to a super winner
+      if (calculateWinner(newWinners)) {
+        setGameState({
+          boards: newBoards,
+          currentBoard: null,
+          moves: newMoves,
+          currentMove: gameState.currentMove + 1,
+          winners: newWinners,
+          superWinner: currBoardWinner,
+        });
+        return;
+      }
+    }
+
+
     // If the target board is won or full, allow playing in any available board
-    const targetBoardWon = winners[cellIndex] !== null;
+    const targetBoardWon = gameState.winners[cellIndex] !== null;
     const targetBoardFull = newBoards[cellIndex].every(cell => cell !== null);
     const nextBoard = (targetBoardWon || targetBoardFull) ? null : cellIndex;
 
@@ -70,6 +93,8 @@ const SuperXOGame: React.FC = () => {
       currentBoard: nextBoard,
       moves: newMoves,
       currentMove: gameState.currentMove + 1,
+      winners: newWinners,
+      superWinner: gameState.superWinner,
     });
   };
 
@@ -83,20 +108,22 @@ const SuperXOGame: React.FC = () => {
     // Check if the BoardIndex was of a Winner board
     const [boardIndex, cellIndex] = gameState.moves[newCurrentMove];
     // Undo the Win
-    if (winners[boardIndex] !== null) {
-      winners[boardIndex] = null;
+    const oldWinners = [...gameState.winners];
+    if (oldWinners[boardIndex] !== null) {
+      oldWinners[boardIndex] = null;
     }
     // Create a new Board and set the Cell to null
     // Done to avoid mutating the state directly
     newBoards[boardIndex] = [...newBoards[boardIndex]];
     newBoards[boardIndex][cellIndex] = null;
     
-
     setGameState({
       ...gameState,
       boards: newBoards,
       currentMove: newCurrentMove,
       currentBoard: boardIndex,
+      winners: oldWinners,
+      superWinner: null, // Reset super winner on undo
     });
   };
 
@@ -109,7 +136,7 @@ const SuperXOGame: React.FC = () => {
     );
     newBoards[boardIndex][cellIndex] = gameState.currentMove % 2 === 0 ? 'X' : 'O';
 
-    const targetBoardWon = winners[cellIndex] !== null;
+    const targetBoardWon = gameState.winners[cellIndex] !== null;
     const targetBoardFull = newBoards[cellIndex].every(cell => cell !== null);
     const nextBoard = targetBoardWon || targetBoardFull ? null : cellIndex;
 
@@ -134,6 +161,17 @@ const SuperXOGame: React.FC = () => {
         >
           <ArrowLeft size={20} /> Undo
         </button>
+
+        { (gameState.superWinner)? (
+          <div className={`super-winner super-winner-${gameState.superWinner.toLowerCase()}`}>
+            Super Winner: {gameState.superWinner}
+          </div>
+          ) : (
+          <div className={`next-player next-player-${nextPlayer.toLowerCase()}`}>
+            Next Player: {nextPlayer}
+          </div>
+        )}
+
         <button
           onClick={handleRedo}
           disabled={gameState.currentMove >= gameState.moves.length}
@@ -142,18 +180,15 @@ const SuperXOGame: React.FC = () => {
           Redo <ArrowRight size={20} />
         </button>
       </div>
+      
+
       <SuperXOBoard
         boards={gameState.boards}
-        winners={winners}
+        winners={gameState.winners}
         currentBoard={gameState.currentBoard}
         onCellClick={handleCellClick}
-        superWinner={superWinner}
+        superWinner={gameState.superWinner}
       />
-      {!superWinner && (
-        <div className={`next-player next-player-${nextPlayer.toLowerCase()}`}>
-          Next Player: {nextPlayer}
-        </div>
-      )}
     </div>
   );
 };
