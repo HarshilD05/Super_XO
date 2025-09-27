@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import XOBoard from '../components/XOBoard';
-import { ArrowLeft, ArrowRight, Home } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Home, RotateCcw, Trophy, Users, Bot } from 'lucide-react';
 import { GameMode, Difficulty } from './HomePage';
 import { XOBot, BotValue } from '../utils/XOBot';
 
@@ -27,6 +27,27 @@ const NormalXOGame: React.FC<NormalXOGameProps> = ({ gameMode, difficulty, onBac
 
   const [gameState, setGameState] = useState<NormalXOGameState>(initialState);
   const [bot, setBot] = useState<XOBot | null>(null);
+  const [showGameEndPopup, setShowGameEndPopup] = useState(false);
+
+  // Restart game function
+  const handleRestart = () => {
+    const newInitialState: NormalXOGameState = {
+      board: Array(9).fill(null),
+      moves: [],
+      currentMove: 0,
+      winner: null,
+    };
+    
+    setGameState(newInitialState);
+    setShowGameEndPopup(false);
+    
+    // Reinitialize bot if in bot mode
+    if (gameMode === 'bot') {
+      const randomBotValue: BotValue = Math.random() < 0.5 ? 'X' : 'O';
+      const newBot = new XOBot(difficulty, randomBotValue);
+      setBot(newBot);
+    }
+  };
 
   // Initialize bot when game starts
   React.useEffect(() => {
@@ -39,6 +60,16 @@ const NormalXOGame: React.FC<NormalXOGameProps> = ({ gameMode, difficulty, onBac
       setBot(null);
     }
   }, [gameMode, difficulty, bot]);
+
+  // Show popup when game ends
+  React.useEffect(() => {
+    const isDraw = !gameState.winner && gameState.board.every(cell => cell !== null);
+    if (gameState.winner || isDraw) {
+      setTimeout(() => {
+        setShowGameEndPopup(true);
+      }, 1000); // Small delay to let the final move be visible
+    }
+  }, [gameState.winner, gameState.board]);
 
   const calculateWinner = (cells: (string | null)[]): string | null => {
     const lines = [
@@ -240,6 +271,67 @@ const NormalXOGame: React.FC<NormalXOGameProps> = ({ gameMode, difficulty, onBac
           winner={gameState.winner}
         />
       </div>
+
+      {/* Game End Popup */}
+      {showGameEndPopup && (
+        <div className="game-end-overlay" onClick={() => setShowGameEndPopup(false)}>
+          <div className="game-end-popup" onClick={(e) => e.stopPropagation()}>
+            {gameState.winner ? (
+              <div className={`game-end-content winner-${gameState.winner.toLowerCase()}`}>
+                <div className="game-end-icon">
+                  <Trophy size={64} />
+                </div>
+                <h2 className="game-end-title">
+                  {getWinMessage(gameState.winner)}
+                </h2>
+                <div className="game-end-subtitle">
+                  {gameMode === 'bot' 
+                    ? (gameState.winner === (bot?.getBotValue() || 'O') 
+                        ? `The bot (${gameState.winner}) wins!` 
+                        : `You (${gameState.winner}) are victorious!`
+                      )
+                    : `Player ${gameState.winner} takes the victory!`
+                  }
+                </div>
+              </div>
+            ) : (
+              <div className="game-end-content draw">
+                <div className="game-end-icon">
+                  {gameMode === 'bot' ? <Bot size={64} /> : <Users size={64} />}
+                </div>
+                <h2 className="game-end-title">It's a Draw!</h2>
+                <div className="game-end-subtitle">
+                  {gameMode === 'bot' 
+                    ? "You and the bot are evenly matched!" 
+                    : "Both players played excellently!"
+                  }
+                </div>
+              </div>
+            )}
+            
+            <div className="game-end-actions">
+              <button 
+                className="game-end-button restart-button"
+                onClick={handleRestart}
+              >
+                <RotateCcw size={20} />
+                Play Again
+              </button>
+              
+              <button 
+                className="game-end-button home-button"
+                onClick={() => {
+                  setShowGameEndPopup(false);
+                  onBackToHome();
+                }}
+              >
+                <Home size={20} />
+                Back to Home
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

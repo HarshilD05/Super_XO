@@ -644,6 +644,137 @@ body {
   max-height: 90vw;
 }
 
+/* Game End Popup Styles */
+.game-end-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  padding: 1rem;
+  animation: fadeIn 0.3s ease-out;
+}
+
+.game-end-popup {
+  background: white;
+  border-radius: 1.5rem;
+  padding: 3rem 2rem;
+  max-width: 400px;
+  width: 100%;
+  text-align: center;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  animation: popIn 0.4s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes popIn {
+  from { 
+    opacity: 0; 
+    transform: scale(0.8) translateY(20px); 
+  }
+  to { 
+    opacity: 1; 
+    transform: scale(1) translateY(0); 
+  }
+}
+
+.game-end-content {
+  margin-bottom: 2rem;
+}
+
+.game-end-icon {
+  margin-bottom: 1.5rem;
+  display: flex;
+  justify-content: center;
+}
+
+.winner-x .game-end-icon {
+  color: #ef4444;
+}
+
+.winner-o .game-end-icon {
+  color: #3b82f6;
+}
+
+.draw .game-end-icon {
+  color: #6b7280;
+}
+
+.game-end-title {
+  font-size: 2rem;
+  font-weight: bold;
+  margin-bottom: 0.5rem;
+  color: #1f2937;
+}
+
+.winner-x .game-end-title {
+  color: #ef4444;
+}
+
+.winner-o .game-end-title {
+  color: #3b82f6;
+}
+
+.draw .game-end-title {
+  color: #6b7280;
+}
+
+.game-end-subtitle {
+  font-size: 1rem;
+  color: #6b7280;
+  margin-bottom: 1rem;
+}
+
+.game-end-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+}
+
+.game-end-button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 1rem;
+}
+
+.restart-button {
+  background: #10b981;
+  color: white;
+}
+
+.restart-button:hover {
+  background: #059669;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+.game-end-button.home-button {
+  background: #6b7280;
+  color: white;
+}
+
+.game-end-button.home-button:hover {
+  background: #4b5563;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(107, 114, 128, 0.3);
+}
+
 /* Responsive design */
 @media (max-width: 768px) {
   .home-title {
@@ -672,5 +803,19 @@ body {
   .normal-xo-game-board .xo-board {
     width: 280px;
     height: 280px;
+  }
+
+  .game-end-popup {
+    margin: 1rem;
+    padding: 2rem 1.5rem;
+  }
+
+  .game-end-actions {
+    flex-direction: column;
+  }
+
+  .game-end-button {
+    width: 100%;
+    justify-content: center;
   }
 }
