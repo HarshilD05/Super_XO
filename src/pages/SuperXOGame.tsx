@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import SuperXOBoard from '../components/SuperXOBoard';
-import { ArrowLeft, ArrowRight } from 'lucide-react';
-
+import { ArrowLeft, ArrowRight, Home } from 'lucide-react';
+import { GameMode, Difficulty } from './HomePage';
+import { SuperXOBot, BotValue } from '../utils/SuperXOBot';
 
 interface GameState {
   boards: (string | null)[][];
@@ -12,7 +13,13 @@ interface GameState {
   superWinner: string | null;
 }
 
-const SuperXOGame: React.FC = () => {
+interface SuperXOGameProps {
+  gameMode: GameMode;
+  difficulty: Difficulty;
+  onBackToHome: () => void;
+}
+
+const SuperXOGame: React.FC<SuperXOGameProps> = ({ gameMode, difficulty, onBackToHome }) => {
   const initialState: GameState = {
     boards: Array(9).fill(Array(9).fill(null)),
     currentBoard: null,
@@ -23,6 +30,19 @@ const SuperXOGame: React.FC = () => {
   };
 
   const [gameState, setGameState] = useState<GameState>(initialState);
+  const [bot, setBot] = useState<SuperXOBot | null>(null);
+
+  // Initialize bot when game starts
+  React.useEffect(() => {
+    if (gameMode === 'bot' && !bot) {
+      // Randomly assign bot to X or O
+      const randomBotValue: BotValue = Math.random() < 0.5 ? 'X' : 'O';
+      const newBot = new SuperXOBot(difficulty, randomBotValue);
+      setBot(newBot);
+    } else if (gameMode === 'pvp') {
+      setBot(null);
+    }
+  }, [gameMode, difficulty, bot]);
 
   const calculateWinner = (cells: (string | null)[]): string | null => {
     const lines = [
@@ -44,7 +64,27 @@ const SuperXOGame: React.FC = () => {
     return null;
   };
 
-  
+  // Use effect to make bot moves
+  React.useEffect(() => {
+    if (gameMode === 'bot' && bot && !gameState.superWinner) {
+      const currentPlayer = gameState.currentMove % 2 === 0 ? 'X' : 'O';
+      const isBotTurn = currentPlayer === bot.getBotValue();
+      
+      if (isBotTurn) {
+        // Bot's turn - sync state and get move
+        bot.syncState(gameState.boards, gameState.winners, gameState.currentBoard);
+        const botMove = bot.getMove();
+        
+        if (botMove) {
+          const [boardIndex, cellIndex] = botMove;
+          setTimeout(() => {
+            handleCellClick(boardIndex, cellIndex);
+          }, 500); // Small delay to make bot move visible
+        }
+      }
+    }
+  }, [gameState.currentMove, gameMode, gameState.superWinner, bot]);
+
   const handleCellClick = (boardIndex: number, cellIndex: number) => {
     if (
       gameState.superWinner ||
@@ -55,11 +95,22 @@ const SuperXOGame: React.FC = () => {
       return;
     }
 
-    const newBoards = gameState.boards.map((board) => board);
-    newBoards[boardIndex] = [...newBoards[boardIndex]];
+    const newBoards = gameState.boards.map((board) => [...board]);
     newBoards[boardIndex][cellIndex] = (gameState.currentMove & 1) ? 'O' : 'X';
 
     const newMoves: [number, number][] = [...gameState.moves.slice(0, gameState.currentMove), [boardIndex, cellIndex]];
+
+    // Record move in bot if it's a player move
+    if (gameMode === 'bot' && bot) {
+      const currentPlayer = (gameState.currentMove & 1) ? 'O' : 'X';
+      if (currentPlayer !== bot.getBotValue()) {
+        // This is a player move, record it
+        bot.recordPlayerMove(boardIndex, cellIndex);
+      } else {
+        // This is a bot move, record it as bot move
+        bot.recordBotMove(boardIndex, cellIndex);
+      }
+    }
 
     // Check if the current board has a winner after the move
     const currBoardWinner = calculateWinner(newBoards[boardIndex]);
@@ -149,10 +200,54 @@ const SuperXOGame: React.FC = () => {
   };
 
   const nextPlayer = gameState.currentMove % 2 === 0 ? 'X' : 'O';
+  
+  // Determine player labels based on bot configuration
+  const getPlayerLabel = (): string => {
+    if (gameMode === 'pvp') {
+      return `Player ${nextPlayer}`;
+    }
+    
+    if (bot) {
+      const isBotTurn = nextPlayer === bot.getBotValue();
+      if (isBotTurn) {
+        return 'Bot Thinking...';
+      } else {
+        return `Your Turn (${nextPlayer})`;
+      }
+    }
+    
+    return `Player ${nextPlayer}`;
+  };
+
+  // Determine win message based on bot configuration
+  const getWinMessage = (winner: string): string => {
+    if (gameMode === 'pvp') {
+      return `Super Winner: ${winner}`;
+    }
+    
+    if (bot) {
+      if (winner === bot.getBotValue()) {
+        return 'Bot Wins!';
+      } else {
+        return 'You Win!';
+      }
+    }
+    
+    return `Super Winner: ${winner}`;
+  };
 
   return (
     <div className="game-container">
-      <h1 className="game-title">Super Tic Tac Toe</h1>
+      <div className="game-header">
+        <button onClick={onBackToHome} className="home-button">
+          <Home size={20} /> Home
+        </button>
+        <h1 className="game-title">Super Tic Tac Toe</h1>
+        <div className="game-mode-indicator">
+          {gameMode === 'bot' ? `vs Bot (${difficulty})` : 'vs Player'}
+        </div>
+      </div>
+      
       <div className="button-container">
         <button
           onClick={handleUndo}
@@ -164,11 +259,11 @@ const SuperXOGame: React.FC = () => {
 
         { (gameState.superWinner)? (
           <div className={`super-winner super-winner-${gameState.superWinner.toLowerCase()}`}>
-            Super Winner: {gameState.superWinner}
+            {getWinMessage(gameState.superWinner)}
           </div>
           ) : (
           <div className={`next-player next-player-${nextPlayer.toLowerCase()}`}>
-            Next Player: {nextPlayer}
+            {getPlayerLabel()}
           </div>
         )}
 
