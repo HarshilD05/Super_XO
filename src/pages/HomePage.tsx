@@ -1,16 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { Bot, Users, Play } from 'lucide-react';
+import { Bot, Users, X, Grid3X3, Grid } from 'lucide-react';
 import { getDifficultyFromStorage, saveDifficultyToStorage } from '../utils/sessionStorage';
 
 export type GameMode = 'pvp' | 'bot';
 export type Difficulty = 'easy' | 'medium' | 'hard';
+export type GameType = 'super-xo' | 'normal-xo';
 
 interface HomePageProps {
-  onStartGame: (mode: GameMode, difficulty?: Difficulty) => void;
+  onStartGame: (gameType: GameType, mode: GameMode, difficulty?: Difficulty) => void;
 }
 
 const HomePage: React.FC<HomePageProps> = ({ onStartGame }) => {
-  const [selectedMode, setSelectedMode] = useState<GameMode>('pvp');
+  const [showPopup, setShowPopup] = useState(false);
+  const [selectedGameType, setSelectedGameType] = useState<GameType>('super-xo');
   const [difficulty, setDifficulty] = useState<Difficulty>('easy');
 
   // Load difficulty from session storage on component mount
@@ -25,63 +27,102 @@ const HomePage: React.FC<HomePageProps> = ({ onStartGame }) => {
     saveDifficultyToStorage(newDifficulty);
   };
 
-  const handleStartGame = () => {
-    onStartGame(selectedMode, selectedMode === 'bot' ? difficulty : undefined);
+  const handleGameTypeSelect = (gameType: GameType) => {
+    setSelectedGameType(gameType);
+    setShowPopup(true);
+  };
+
+  const handleStartGame = (mode: GameMode) => {
+    onStartGame(selectedGameType, mode, mode === 'bot' ? difficulty : undefined);
+    setShowPopup(false);
+  };
+
+  const closePopup = () => {
+    setShowPopup(false);
   };
 
   return (
     <div className="home-container">
-      <h1 className="home-title">Super Tic Tac Toe</h1>
-      <p className="home-subtitle">Choose your game mode and start playing!</p>
+      <h1 className="home-title">Tic Tac Toe Games</h1>
+      <p className="home-subtitle">Choose your game type and start playing!</p>
       
-      <div className="game-mode-selection">
-        <h2 className="selection-title">Select Game Mode</h2>
+      <div className="game-type-selection">
+        <h2 className="selection-title">Select Game Type</h2>
         
-        <div className="mode-buttons">
+        <div className="game-type-buttons">
           <button
-            className={`mode-button ${selectedMode === 'pvp' ? 'selected' : ''}`}
-            onClick={() => setSelectedMode('pvp')}
+            className="game-type-button"
+            onClick={() => handleGameTypeSelect('super-xo')}
           >
-            <Users size={32} />
-            <span>Player vs Player</span>
-            <p className="mode-description">Play against another human player</p>
+            <Grid size={48} />
+            <span>Super Tic Tac Toe</span>
+            <p className="game-type-description">9x9 advanced tic-tac-toe with strategic gameplay</p>
           </button>
           
           <button
-            className={`mode-button ${selectedMode === 'bot' ? 'selected' : ''}`}
-            onClick={() => setSelectedMode('bot')}
+            className="game-type-button"
+            onClick={() => handleGameTypeSelect('normal-xo')}
           >
-            <Bot size={32} />
-            <span>Player vs Bot</span>
-            <p className="mode-description">Play against AI opponent</p>
+            <Grid3X3 size={48} />
+            <span>Normal Tic Tac Toe</span>
+            <p className="game-type-description">Classic 3x3 tic-tac-toe game</p>
           </button>
         </div>
-        
-        {selectedMode === 'bot' && (
-          <div className="difficulty-selection">
-            <h3 className="difficulty-title">Select Difficulty</h3>
-            <div className="difficulty-buttons">
-              {(['easy', 'medium', 'hard'] as Difficulty[]).map((level) => (
-                <button
-                  key={level}
-                  className={`difficulty-button ${difficulty === level ? 'selected' : ''} difficulty-${level}`}
-                  onClick={() => handleDifficultyChange(level)}
-                >
-                  {level.charAt(0).toUpperCase() + level.slice(1)}
-                </button>
-              ))}
-            </div>
-            <p className="difficulty-info">
-              Last selected: <strong>{difficulty}</strong>
-            </p>
-          </div>
-        )}
-        
-        <button className="play-button" onClick={handleStartGame}>
-          <Play size={24} />
-          Start Game
-        </button>
       </div>
+
+      {/* Popup Modal */}
+      {showPopup && (
+        <div className="popup-overlay" onClick={closePopup}>
+          <div className="popup-modal" onClick={(e) => e.stopPropagation()}>
+            <button className="popup-close" onClick={closePopup}>
+              <X size={24} />
+            </button>
+            
+            <h3 className="popup-title">
+              {selectedGameType === 'super-xo' ? 'Super Tic Tac Toe' : 'Normal Tic Tac Toe'}
+            </h3>
+            
+            {/* Difficulty Selection */}
+            <div className="popup-difficulty-section">
+              <h4 className="popup-section-title">Bot Difficulty</h4>
+              <div className="popup-difficulty-buttons">
+                {(['easy', 'medium', 'hard'] as Difficulty[]).map((level) => (
+                  <button
+                    key={level}
+                    className={`popup-difficulty-button ${difficulty === level ? 'selected' : ''} difficulty-${level}`}
+                    onClick={() => handleDifficultyChange(level)}
+                  >
+                    {level.charAt(0).toUpperCase() + level.slice(1)}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Bot Mode Button */}
+            <button 
+              className="popup-mode-button bot-button"
+              onClick={() => handleStartGame('bot')}
+            >
+              <Bot size={24} />
+              <span>Play Against Bot</span>
+              <small>Difficulty: {difficulty}</small>
+            </button>
+
+            {/* Spacer */}
+            <div className="popup-spacer"></div>
+
+            {/* PVP Mode Button */}
+            <button 
+              className="popup-mode-button pvp-button"
+              onClick={() => handleStartGame('pvp')}
+            >
+              <Users size={24} />
+              <span>Player vs Player</span>
+              <small>Play against another human</small>
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
