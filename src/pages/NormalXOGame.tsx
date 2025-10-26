@@ -5,7 +5,7 @@ import { GameMode, Difficulty } from './HomePage';
 import { XOBot, BotValue } from '../utils/XOBot';
 
 interface NormalXOGameState {
-  board: (string | null)[];
+  board: string; // String representation: '.' for empty, 'X' or 'O' for filled
   moves: number[];
   currentMove: number;
   winner: string | null;
@@ -19,7 +19,7 @@ interface NormalXOGameProps {
 
 const NormalXOGame: React.FC<NormalXOGameProps> = ({ gameMode, difficulty, onBackToHome }) => {
   const initialState: NormalXOGameState = {
-    board: Array(9).fill(null),
+    board: '.........', // 9 dots for empty board
     moves: [],
     currentMove: 0,
     winner: null,
@@ -29,10 +29,20 @@ const NormalXOGame: React.FC<NormalXOGameProps> = ({ gameMode, difficulty, onBac
   const [bot, setBot] = useState<XOBot | null>(null);
   const [showGameEndPopup, setShowGameEndPopup] = useState(false);
 
+  // Helper function to convert string board to array for display
+  const stringToArray = (boardStr: string): (string | null)[] => {
+    return boardStr.split('').map(char => char === '.' ? null : char);
+  };
+
+  // Helper function to set a cell in the board string
+  const setBoardCell = (boardStr: string, index: number, value: string): string => {
+    return boardStr.substring(0, index) + value + boardStr.substring(index + 1);
+  };
+
   // Restart game function
   const handleRestart = () => {
     const newInitialState: NormalXOGameState = {
-      board: Array(9).fill(null),
+      board: '.........', // Reset to empty board
       moves: [],
       currentMove: 0,
       winner: null,
@@ -63,7 +73,7 @@ const NormalXOGame: React.FC<NormalXOGameProps> = ({ gameMode, difficulty, onBac
 
   // Show popup when game ends
   React.useEffect(() => {
-    const isDraw = !gameState.winner && gameState.board.every(cell => cell !== null);
+    const isDraw = !gameState.winner && !gameState.board.includes('.');
     if (gameState.winner || isDraw) {
       setTimeout(() => {
         setShowGameEndPopup(true);
@@ -71,7 +81,7 @@ const NormalXOGame: React.FC<NormalXOGameProps> = ({ gameMode, difficulty, onBac
     }
   }, [gameState.winner, gameState.board]);
 
-  const calculateWinner = (cells: (string | null)[]): string | null => {
+  const calculateWinner = (boardStr: string): string | null => {
     const lines = [
       [0, 1, 2],
       [3, 4, 5],
@@ -84,8 +94,8 @@ const NormalXOGame: React.FC<NormalXOGameProps> = ({ gameMode, difficulty, onBac
     ];
 
     for (const [a, b, c] of lines) {
-      if (cells[a] && cells[a] === cells[b] && cells[a] === cells[c]) {
-        return cells[a];
+      if (boardStr[a] !== '.' && boardStr[a] === boardStr[b] && boardStr[a] === boardStr[c]) {
+        return boardStr[a];
       }
     }
     return null;
@@ -112,18 +122,17 @@ const NormalXOGame: React.FC<NormalXOGameProps> = ({ gameMode, difficulty, onBac
   }, [gameState.currentMove, gameMode, gameState.winner, bot]);
 
   const handleCellClick = (cellIndex: number) => {
-    if (gameState.winner || gameState.board[cellIndex] !== null) {
+    if (gameState.winner || gameState.board[cellIndex] !== '.') {
       return;
     }
 
-    const newBoard = [...gameState.board];
-    newBoard[cellIndex] = (gameState.currentMove % 2) === 0 ? 'X' : 'O';
+    const currentPlayer = (gameState.currentMove % 2) === 0 ? 'X' : 'O';
+    const newBoard = setBoardCell(gameState.board, cellIndex, currentPlayer);
 
     const newMoves = [...gameState.moves.slice(0, gameState.currentMove), cellIndex];
 
     // Record move in bot if it's a player move
     if (gameMode === 'bot' && bot) {
-      const currentPlayer = (gameState.currentMove % 2) === 0 ? 'X' : 'O';
       if (currentPlayer !== bot.getBotValue()) {
         // This is a player move, record it
         bot.recordPlayerMove(cellIndex);
@@ -148,11 +157,10 @@ const NormalXOGame: React.FC<NormalXOGameProps> = ({ gameMode, difficulty, onBac
     if (gameState.currentMove === 0) return;
 
     const newCurrentMove = gameState.currentMove - 1;
-    const newBoard = [...gameState.board];
     const lastMove = gameState.moves[newCurrentMove];
     
-    // Undo the last move
-    newBoard[lastMove] = null;
+    // Undo the last move - set cell back to empty
+    const newBoard = setBoardCell(gameState.board, lastMove, '.');
     
     setGameState({
       ...gameState,
@@ -166,8 +174,8 @@ const NormalXOGame: React.FC<NormalXOGameProps> = ({ gameMode, difficulty, onBac
     if (gameState.currentMove >= gameState.moves.length) return;
 
     const cellIndex = gameState.moves[gameState.currentMove];
-    const newBoard = [...gameState.board];
-    newBoard[cellIndex] = gameState.currentMove % 2 === 0 ? 'X' : 'O';
+    const currentPlayer = gameState.currentMove % 2 === 0 ? 'X' : 'O';
+    const newBoard = setBoardCell(gameState.board, cellIndex, currentPlayer);
 
     const winner = calculateWinner(newBoard);
 
@@ -217,7 +225,7 @@ const NormalXOGame: React.FC<NormalXOGameProps> = ({ gameMode, difficulty, onBac
   };
 
   // Check for draw
-  const isDraw = !gameState.winner && gameState.board.every(cell => cell !== null);
+  const isDraw = !gameState.winner && !gameState.board.includes('.');
 
   return (
     <div className="game-container">
@@ -265,7 +273,7 @@ const NormalXOGame: React.FC<NormalXOGameProps> = ({ gameMode, difficulty, onBac
       
       <div className="normal-xo-game-board">
         <XOBoard
-          cells={gameState.board}
+          cells={stringToArray(gameState.board)}
           onCellClick={handleCellClick}
           isActive={!gameState.winner && !isDraw}
           winner={gameState.winner}
